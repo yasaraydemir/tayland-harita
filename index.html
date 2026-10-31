@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dükkan Harita — Tayland kiralık dükkan</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="style.css?v=71">
+</head>
+<body>
+<aside id="side">
+  <div id="mobbar" class="mobonly">
+    <div id="mobhandle" title="Yukarı / aşağı sürükle" data-th-title="ลากขึ้น / ลง"><span></span></div>
+    <div class="mobrow">
+      <div class="mobmodes" id="mobmodes">
+        <button type="button" data-mview="map" data-th="🗺 แผนที่">🗺 Harita</button>
+        <button type="button" data-mview="split" class="on" data-th="⚖️ คู่">⚖️ İkisi</button>
+        <button type="button" data-mview="list" data-th="📋 รายการ">📋 Liste</button>
+      </div>
+      <button type="button" id="mobfiltbtn" data-th="⚙ ตัวกรอง">⚙ Filtre &amp; Araçlar</button>
+    </div>
+    <div id="mobchips" class="mobchips"></div>
+  </div>
+  <header class="mob-collapsible">
+    <h1 data-th="แผนที่ร้านค้า">Dükkan Harita</h1>
+    <div class="row">
+      <select id="city"></select>
+      <button id="refresh" title="Bütün kaynaklardan şehrin ilanlarını yeniden çek" data-th-title="ดึงประกาศของเมืองนี้ใหม่จากทุกแหล่ง" data-th="อัปเดตข้อมูล">Verileri güncelle</button>
+      <button id="cloudbtn" type="button" hidden title="Güncel verileri 7/24 açık kalan ücretsiz GitHub Pages bulut sitesine yükle" data-th-title="อัปโหลดข้อมูลล่าสุดขึ้นคลาวด์ที่เปิดตลอด 24/7" data-th="☁ อัปเดตคลาวด์">☁ 7/24 Bulut</button>
+      <button id="sharebtn" type="button" hidden title="7/24 açık kalan sabit internet linkini kopyalar" data-th-title="คัดลอกลิงก์สำหรับแชร์" data-th="🔗 แชร์">🔗 Paylaş</button>
+    </div>
+    <div id="status" class="muted"></div>
+  </header>
+
+  <section class="box mob-collapsible" id="filters">
+    <div class="boxh"><span data-th="ตัวกรอง">Filtre</span> <button type="button" id="freset" class="mini" title="Bütün filtreleri temizle" data-th-title="ล้างตัวกรองทั้งหมด" data-th="รีเซ็ต">Sıfırla</button></div>
+    <div class="frow"><span data-th="ค่าเช่า ฿/เดือน">Kira ฿/ay</span>
+      <input id="pmin" type="number" placeholder="en az" data-th-ph="ต่ำสุด" step="1000" min="0">
+      <input id="pmax" type="number" value="21000" placeholder="en çok" data-th-ph="สูงสุด" step="1000" min="0"></div>
+    <div class="frow"><span>m²</span>
+      <input id="smin" type="number" value="30" placeholder="en az" data-th-ph="ต่ำสุด" step="5" min="0">
+      <input id="smax" type="number" placeholder="en çok" data-th-ph="สูงสุด" step="5" min="0"></div>
+    <div class="frow"><span data-th="จำนวนห้อง">Oda sayısı</span>
+      <select id="fbr" title="Condo dairelerinin oda sayısına göre filtrele (Stüdyo, 1+1, 2+1, 3+1 vb.)" data-th-title="กรองตามจำนวนห้องนอนของคอนโด (สตูดิโอ, 1+1, 2+1, 3+1 ฯลฯ)">
+        <option value="" selected data-th="ทั้งหมด">hepsi</option>
+        <option value="studio" data-th="🛏 สตูดิโอ (Studio)">🛏 Stüdyo</option>
+        <option value="one_bedroom" data-th="🛏 1+1 (1 ห้องนอน)">🛏 1+1</option>
+        <option value="two_bedrooms" data-th="🛏 2+1 (2 ห้องนอน)">🛏 2+1</option>
+        <option value="three_bedrooms" data-th="🛏 3+1 (3 ห้องนอน)">🛏 3+1</option>
+        <option value="four_plus" data-th="🛏 4+1 และมากกว่า">🛏 4+1 ve üzeri</option>
+        <option value="studio_1br" data-th="🛏 สตูดิโอ หรือ 1+1">🛏 Stüdyo veya 1+1</option>
+        <option value="1br_2br" data-th="🛏 1+1 หรือ 2+1">🛏 1+1 veya 2+1</option>
+        <option value="2plus" data-th="🛏 2+1 ขึ้นไป (2+1, 3+1, 4+)">🛏 2+1 ve üzeri (2+1, 3+1, 4+)</option>
+      </select></div>
+    <div class="frow"><span data-th="สถานี">İstasyon</span>
+      <select id="fbts" title="En yakın raylı istasyona (BTS/MRT/ARL) kuş uçuşu uzaklık; dükkân ve condo" data-th-title="ระยะทางเส้นตรงถึงสถานีรถไฟฟ้าที่ใกล้ที่สุด (BTS/MRT/ARL) ใช้กับร้านค้าและคอนโด">
+        <option value="" selected data-th="ทั้งหมด">hepsi</option>
+        <option value="300">≤ 300 m</option>
+        <option value="500">≤ 500 m</option>
+        <option value="800">≤ 800 m</option>
+        <option value="1200">≤ 1,2 km</option>
+      </select></div>
+    <div class="frow"><span data-th="อายุอาคาร">Bina yaşı</span>
+      <input id="fage" type="number" value="" min="0" max="100" step="1" placeholder="Hepsi" data-th-ph="อายุสูงสุด (เว้นว่าง = ทั้งหมด)" title="Binanın en fazla kaç yaşında olacağını yazın (ör. 8); tüm binalar için boş bırakın (yalnız condo)" data-th-title="พิมพ์อายุอาคารสูงสุดเป็นปี (เช่น 8) เว้นว่างเพื่อดูทั้งหมด (เฉพาะคอนโด)"></div>
+    <div class="frow"><span data-th="เก็บเสียง">Yalıtım</span>
+      <select id="fwall" title="Doğrulanmış yalıtım bilgisine göre filtre; puana etkisi yok" data-th-title="ระดับความหนาผนังและการเก็บเสียงของคอนโด">
+        <option value="" selected data-th="ทั้งหมด">hepsi</option>
+        <option value="yuksek" data-th="🧱 สูง (ข้อมูลยืนยัน)">🧱 Yüksek (doğrulanmış bilgi)</option>
+        <option value="yuksek_orta" data-th="🧱 สูง หรือ ปานกลาง">🧱 Yüksek veya Orta</option>
+        <option value="orta" data-th="🧱 ปานกลาง (คอนกรีตมาตรฐาน)">🧱 Orta (doğrulanmış bilgi)</option>
+        <option value="dusuk_degil" data-th="🧱 ซ่อนระดับต่ำ">🧱 Düşük hariç</option>
+        <option value="dusuk" data-th="🧱 ต่ำ (ข้อมูลยืนยัน)">🧱 Düşük (doğrulanmış bilgi)</option>
+      </select></div>
+    <div class="frow"><span data-th="การจราจร">Trafik</span>
+      <select id="ftraf" title="Condo etrafındaki otoyol ve ana cadde trafik yoğunluğu" data-th-title="ความหนาแน่นการจราจรบนถนนใหญ่/ทางด่วนรอบคอนโด">
+        <option value="" selected data-th="ทั้งหมด">hepsi</option>
+        <option value="sakin" data-th="🚗 สงบ (ซอยเงียบ)">🚗 Sakin (ara sokak)</option>
+        <option value="sakin_orta" data-th="🚗 สงบ หรือ ปานกลาง (ไม่เอาหนาแน่น)">🚗 Sakin veya Orta (yoğun hariç)</option>
+        <option value="orta" data-th="🚗 ปานกลาง">🚗 Orta</option>
+        <option value="yogun" data-th="🚗 หนาแน่น (ติดถนนใหญ่/ทางด่วน)">🚗 Yoğun (ana cadde / otoyol dibi)</option>
+      </select></div>
+    <div class="frow"><span data-th="อัปเดต">Güncelleme</span>
+      <select id="fupd" title="İlanın kaynakta son güncellenme süresi (müsaitlik doğrulaması değildir); 2 haftadan eski ilanlar sekmeden artırılmadıkça gizlenir" data-th-title="ระยะเวลาอัปเดตล่าสุดของประกาศ ประกาศที่เก่ากว่า 2 สัปดาห์จะถูกซ่อนเว้นแต่จะเพิ่มในตัวเลือก">
+        <option value="7" data-th="≤ 1 สัปดาห์">son 1 hafta</option>
+        <option value="14" selected data-th="≤ 2 สัปดาห์">son 2 hafta</option>
+        <option value="31" data-th="≤ 1 เดือน">son 1 ay</option>
+        <option value="62" data-th="≤ 2 เดือน">son 2 ay</option>
+        <option value="93" data-th="≤ 3 เดือน">son 3 ay</option>
+        <option value="183" data-th="≤ 6 เดือน">son 6 ay</option>
+        <option value="365" data-th="≤ 1 ปี">son 1 yıl</option>
+        <option value="" data-th="ทั้งหมด (รวมประกาศเก่า)">hepsi (eskiler dahil)</option>
+      </select></div>
+  </section>
+
+  <section class="box mob-collapsible" id="areabox">
+    <div class="row">
+      <input id="stationq" list="stationlist" placeholder="İstasyon: Asok  ya da  Nana - Asok" data-th-ph="สถานี: Asok  หรือ  Nana - Asok">
+      <datalist id="stationlist"></datalist>
+      <button id="go" data-th="พื้นที่">Bölge</button>
+    </div>
+    <div class="row">
+      <button id="draw" class="primary" data-th="✏ วาดพื้นที่บนแผนที่">✏ Haritada alan çiz</button>
+      <button id="clear" data-th="ล้าง">Temizle</button>
+    </div>
+    <div class="muted hint" data-th="เคล็ดลับ: กดปุ่ม ✏ วาด แล้วกดค้างลากนิ้วรอบพื้นที่บนแผนที่ ปล่อยนิ้วเพื่อปิดรูป">İpucu: ✏ Çiz'e basıp haritada basılı tutarak alanın sınırını çiz, bırakınca kapanır.</div>
+    <div id="area" class="muted" data-th="ยังไม่ได้เลือกพื้นที่ — วาดพื้นที่บนแผนที่เพื่อดูประกาศ">Bölge seçilmedi — ilanları görmek için haritada alan çizin.</div>
+  </section>
+
+  <section class="box" id="typebox">
+    <div class="chips" id="types">
+      <label><input type="checkbox" value="retail"> <span data-th="ร้านค้า">Dükkan</span></label>
+      <label><input type="checkbox" value="shophouse"> <span data-th="อาคารพาณิชย์">Shophouse</span></label>
+      <label><input type="checkbox" value="other"> <span data-th="อื่นๆ">Diğer</span></label>
+      <label><input type="checkbox" value="office"> <span data-th="สำนักงาน">Ofis</span></label>
+      <label><input type="checkbox" value="warehouse"> <span data-th="โกดัง">Depo</span></label>
+      <label title="Giriş katı olmayan dükkânlar (yalnız üst kat, sokaktan girişi yok)" data-th-title="ร้านที่ไม่ได้อยู่ชั้นล่าง (เฉพาะชั้นบน ไม่มีทางเข้าจากถนน)"><input type="checkbox" value="kat"> <span data-th="ร้านชั้นบน">Kat dükkânı</span></label>
+      <label title="Condo binaları: kiralık daire m², yaş, istasyon, fiyat ve çevreyle puanlanır" data-th-title="อาคารคอนโด: ให้คะแนนห้องเช่าตาม m² อายุ สถานี ราคา และสภาพแวดล้อม"><input type="checkbox" value="condo" checked> <span data-th="คอนโด">Condo</span></label>
+      <button type="button" id="alltypes" title="Bütün dükkân türlerini seç (kat dükkânı dahil)" data-th-title="เลือกร้านค้าทุกประเภท (รวมร้านชั้นบน)" data-th="ทั้งหมด">Tümü</button>
+    </div>
+    <div class="tabs" id="viewtabs">
+      <button type="button" data-tab="circle" class="on" title="Yalnız haritada çizdiğin alanın içindeki ilanları listeler (alan çizilmeden veri gelmez)" data-th-title="แสดงเฉพาะประกาศในพื้นที่ที่วาดบนแผนที่ (ต้องวาดพื้นที่ก่อน)" data-th="✏ ในพื้นที่">✏ Alan İçi</button>
+      <button type="button" data-tab="deals" title="Alan çizmeden tüm şehirdeki fırsatları listeler" data-th-title="แสดงดีลทั้งเมืองโดยไม่ต้องวาดพื้นที่" data-th="★ ดีลเด่น">★ Fırsat Bölümü</button>
+      <button type="button" data-tab="malls" id="mallstab" title="Bangkok'taki tüm AVM'lerin listesi; üzerine gelince haritada AVM'ye götürür, tıklayınca içindeki kiralıkları puanlı listeler" data-th-title="รายชื่อห้างทั้งหมดในกรุงเทพฯ ชี้เพื่อไปที่ห้างบนแผนที่ คลิกเพื่อดูประกาศเช่าพร้อมคะแนน" data-th="🛍 ห้าง (Mall)">🛍 AVM'ler</button>
+      <button type="button" data-tab="saved" id="savedtab" title="Kaydettiğin condo linklerini kendi içlerinde puanlayıp kıyaslar" data-th-title="เปรียบเทียบและให้คะแนนคอนโดที่คุณบันทึกไว้">⭐ Kaydedilenler (0)</button>
+    </div>
+    <div id="mallbox" class="mallbox" hidden>
+      <button type="button" id="mallbacktop" class="mall-back-top" hidden data-th="← กลับไปรายชื่อห้างทั้งหมด (ออกจากห้างนี้)">← Tüm AVM'ler Listesine Dön (AVM'den Çık)</button>
+      <div class="row">
+        <input id="mallq" type="search" placeholder="AVM ara: ör. Terminal 21, Siam, Central, Donki, EmQuartier…" data-th-ph="ค้นหาห้าง: เช่น Terminal 21, Siam, Central, Donki…" autocomplete="off">
+      </div>
+      <div class="row">
+        <select id="mallsort" title="AVM listesini sırala" data-th-title="เรียงลำดับรายชื่อห้าง">
+          <option value="in_first" selected data-th="🏢 มีประกาศในห้างขึ้นก่อน">🏢 AVM içi kiralığı olanlar üstte</option>
+          <option value="total" data-th="📊 จำนวนประกาศเช่ามากสุด">📊 Toplam kiralık sayısına göre</option>
+          <option value="score" data-th="⭐ คะแนนสูงสุดขึ้นก่อน">⭐ En yüksek fırsat puanına göre</option>
+          <option value="name" data-th="🔤 เรียงตามชื่อ (A–Z)">🔤 İsim sırası (A–Z)</option>
+        </select>
+        <label class="chk" title="Yalnızca içinde veya 250 m çevresinde kiralık ilanı olan AVM'leri göster" data-th-title="แสดงเฉพาะห้างที่มีประกาศให้เช่าภายในหรือรอบๆ 250 ม."><input type="checkbox" id="mallonly" checked> <span data-th="เฉพาะที่มีประกาศ">İlanlılar</span></label>
+      </div>
+    </div>
+    <div id="savedbox" class="savedbox" hidden>
+      <div class="boxh">
+        <span data-th="⭐ บันทึกและเปรียบเทียบคอนโด">⭐ Condo Linki Kaydet &amp; Kıyasla</span>
+        <span class="saved-box-btns">
+          <button type="button" id="savedclose" class="mini saved-close-btn" data-th="✕ ปิด">✕ Kapat</button>
+        </span>
+      </div>
+      <div class="row">
+        <input id="saveurl" type="url" placeholder="Condo linkini yapıştır (DDproperty, PropertyScout, Baania…)" data-th-ph="วางลิงก์ประกาศคอนโดที่นี่ (DDproperty, PropertyScout, Baania…)">
+        <button type="button" id="saveadd" class="primary" style="flex:none" data-th="+ บันทึก">+ Kaydet</button>
+      </div>
+      <details id="savemore" class="savemore">
+        <summary data-th="กรอกราคา / ตร.ม. / ชั้น / คะแนน เพิ่มเติม (ไม่บังคับ)">Fiyat / m² / kat / kendi puanını elle gir (opsiyonel)</summary>
+        <div class="row">
+          <input id="savebname" type="text" placeholder="Bina adı (otomatik bulunur)" data-th-ph="ชื่อคอนโด (ค้นหาอัตโนมัติ)">
+        </div>
+        <div class="row">
+          <input id="saveprice" type="number" placeholder="Kira ฿/ay" data-th-ph="ค่าเช่า ฿/เดือน" step="500" min="0">
+          <input id="savesize" type="number" placeholder="m²" data-th-ph="ตร.ม." step="1" min="0">
+          <input id="savefloor" type="text" placeholder="Kat (ör. 18)" data-th-ph="ชั้น (เช่น 18)">
+        </div>
+        <div class="row">
+          <select id="saverate" title="Senin kişisel beğeni puanın (1–10)" data-th-title="คะแนนความชอบส่วนตัวของคุณ (1–10)">
+            <option value="" data-th="คะแนนของคุณ (1–10): ยังไม่ระบุ">Senin puanın (1–10): seçilmedi</option>
+            <option value="10" data-th="⭐ 10 — สมบูรณ์แบบ / ชอบมากที่สุด">⭐ 10 — Kusursuz / Favorim</option>
+            <option value="9" data-th="⭐ 9 — ดีมาก">⭐ 9 — Çok iyi</option>
+            <option value="8" data-th="⭐ 8 — ดี">⭐ 8 — İyi</option>
+            <option value="7" data-th="⭐ 7 — ค่อนข้างดี">⭐ 7 — Olumlu</option>
+            <option value="6" data-th="⭐ 6 — พอใช้">⭐ 6 — İdare eder</option>
+            <option value="5" data-th="⭐ 5 — ลังเล / ปานกลาง">⭐ 5 — Kararsız</option>
+            <option value="4" data-th="⭐ 4 — อ่อน">⭐ 4 — Zayıf</option>
+            <option value="3" data-th="⭐ 3 — แย่">⭐ 3 — Kötü</option>
+            <option value="2" data-th="⭐ 2 — แย่มาก">⭐ 2 — Çok kötü</option>
+            <option value="1" data-th="⭐ 1 — ตัดออก">⭐ 1 — Elendi</option>
+          </select>
+          <input id="savenote" type="text" placeholder="Notun (ör. pazarlıkla 15k olur, balkon açık)" data-th-ph="บันทึกส่วนตัว (เช่น ต่อราคาได้, ระเบียงโล่ง)…">
+        </div>
+      </details>
+      <div id="savemsg" class="muted hint"></div>
+    </div>
+    <div class="row shoponly" id="fmodrow">
+      <select id="fmod" style="flex:1" title="Fırsatları ilanın düştüğü kalabalık hücresine göre sıralar (yoğundan seyreğe)" data-th-title="เรียงดีลตามความหนาแน่นคนของช่องที่ประกาศอยู่ (มากไปน้อย)">
+        <option value="" data-th="มุมมองดีล: ปกติ (ทั้งเมือง)">Fırsat görünümü: normal (tüm şehir)</option>
+        <option value="asok" data-th="ดีลตามความหนาแน่นคน: ย่าน Asok–Nana">Kalabalığa göre fırsatlar: Asok–Nana civarı</option>
+        <option value="bkk" data-th="ดีลตามความหนาแน่นคน: ทั่วกรุงเทพฯ">Kalabalığa göre fırsatlar: tüm Bangkok</option>
+      </select>
+    </div>
+    <div class="row shoponly">
+      <label class="chk"><input type="checkbox" id="onlydeal"> <span data-th="เฉพาะดีล">Yalnız fırsatlar</span></label>
+      <select id="katf" title="Yola sıfır: OSM ana/ara caddeye ≤45 m giriş katı veya ilanda 'ติดถนน / street-front' geçen gerçek dükkanlar" data-th-title="ติดถนน: ร้านชั้นล่างห่างถนนหลัก/รอง ≤45 ม. หรือระบุ 'ติดถนน / street-front' ในประกาศ">
+        <option value="cadde" data-th="🛣 ติดถนน / ชั้นล่าง">🛣 Yola sıfır / cadde üstü</option>
+        <option value="giris" data-th="เฉพาะชั้นล่าง (รวมในซอย)">Yalnız giriş katı (ara sokak dahil)</option>
+        <option value="ustdegil" selected data-th="ซ่อนชั้นบน">Üst katları gizle</option>
+        <option value="" data-th="ชั้น/ทำเล: ทั้งหมด">Kat/Konum: hepsi</option>
+      </select>
+      <select id="sort">
+        <option value="score" data-th="คะแนนดีล">Fırsat puanı</option>
+        <option value="price" data-th="ราคา (น้อยไปมาก)">Fiyat (artan)</option>
+        <option value="ppsm" data-th="฿/m² (น้อยไปมาก)">฿/m² (artan)</option>
+        <option value="size" data-th="m² (มากไปน้อย)">m² (azalan)</option>
+        <option value="station" data-th="ใกล้สถานี">İstasyona yakın</option>
+        <option value="center" data-th="ใกล้จุดศูนย์กลาง">Merkeze yakın</option>
+        <option value="pop" data-th="ความหนาแน่นประชากร (มากไปน้อย)">Nüfus yoğunluğu (yoğundan)</option>
+        <option value="deal" data-th="ถูกที่สุดเทียบราคาตลาด">Emsale göre en ucuz</option>
+        <option value="new" data-th="ใหม่ล่าสุด">En yeni</option>
+      </select>
+    </div>
+  </section>
+
+  <section class="box" id="condobox">
+    <div class="boxh mob-collapsible" data-th="ดีลคอนโด">Condo fırsatları</div>
+    <div class="row csearchwrap">
+      <input id="condoq" type="search" placeholder="Condo adı ara: ör. the room 38, life asoke…" data-th-ph="ค้นหาชื่อคอนโด: เช่น the room 38, life asoke…" autocomplete="off">
+      <div id="condosug" class="csug" hidden></div>
+    </div>
+    <div class="row">
+      <select id="cmin" title="Binada en az kaç kiralık ilan olsun" data-th-title="จำนวนประกาศให้เช่าขั้นต่ำในอาคาร">
+        <option value="1" selected data-th="อย่างน้อย 1 ประกาศ">en az 1 ilan</option>
+        <option value="3" data-th="อย่างน้อย 3 ประกาศ">en az 3 ilan</option>
+        <option value="5" data-th="อย่างน้อย 5 ประกาศ">en az 5 ilan</option>
+        <option value="10" data-th="อย่างน้อย 10 ประกาศ">en az 10 ilan</option>
+      </select>
+      <select id="csort">
+        <option value="total" data-th="ความเหมาะสม (ราคา · อายุ · สถานี · กลางคืน)">Uygunluk (fiyat · yaş · istasyon · gece çevresi)</option>
+        <option value="rcheap" data-th="ค่าเช่าต่ำสุด">En düşük kira</option>
+        <option value="bts" data-th="ใกล้สถานี">İstasyona yakın</option>
+        <option value="new" data-th="อาคารใหม่สุด">En yeni bina</option>
+      </select>
+    </div>
+    <div id="condonote" class="muted hint mob-collapsible"></div>
+  </section>
+
+  <section class="box mob-collapsible" id="layerbox">
+    <div class="boxh" data-th="ชั้นข้อมูล">Katmanlar</div>
+    <div id="stsub" class="stsub" hidden>
+      <div class="stsub-h">
+        <span data-th="🚇 เลือกสายสถานีที่จะแสดง">🚇 İstasyon Hatları (Seçmeli)</span>
+        <span class="stsub-acts">
+          <button type="button" id="stall" class="mini" data-th="ทั้งหมด">Tümü</button>
+          <button type="button" id="stnone" class="mini" data-th="ปิดหมด">Hiçbiri</button>
+          <button type="button" id="stclose" class="mini saved-close-btn" title="Sekmeyi kapat" data-th-title="ปิด">✕</button>
+        </span>
+      </div>
+      <div class="stsub-chips" id="stlines">
+        <label class="stchip on"><input type="checkbox" value="BTS" checked> <i style="background:#65B724"></i> <span>BTS</span></label>
+        <label class="stchip"><input type="checkbox" value="MRT"> <i style="background:#1E398D"></i> <span>MRT</span></label>
+        <label class="stchip"><input type="checkbox" value="ARL"> <i style="background:#7a1c24"></i> <span>ARL (Airport)</span></label>
+        <label class="stchip"><input type="checkbox" value="SRT"> <i style="background:#B5191E"></i> <span data-th="SRT / รถไฟ">SRT / Tren</span></label>
+      </div>
+    </div>
+    <div class="chips" id="layers">
+      <button type="button" id="sttoggle" class="st-layer-btn on" title="Tıkla: BTS / MRT / ARL / SRT hatlarını ayrı ayrı aç/kapat" data-th-title="คลิกเพื่อเปิด/ปิดสาย BTS / MRT / ARL / SRT แยกกัน"><span id="sttogglelbl">🚇 İstasyonlar (BTS) ▾</span></button>
+      <input type="checkbox" value="stations" id="stmainchk" checked hidden>
+      <label><input type="checkbox" value="rail"> <span data-th="เส้นทางรถไฟฟ้า">Raylı hatlar</span></label>
+      <label><input type="checkbox" value="roads"> <span data-th="ถนนสายหลัก">Ana caddeler</span></label>
+      <label><input type="checkbox" value="districts"> <span data-th="เขต">Bölgeler</span></label>
+      <label><input type="checkbox" value="crowd"> <span class="sw crowd"></span><span data-th="ความหนาแน่นคน (ใจกลาง)">Kalabalık (merkez)</span></label>
+      <label><input type="checkbox" value="crowd_bkk"> <span class="sw crowd"></span><span data-th="ความหนาแน่นคน (ทั่วกรุงเทพฯ)">Kalabalık (tüm Bangkok)</span></label>
+      <label><input type="checkbox" value="nufus"> <span class="sw nufus"></span><span data-th="ความหนาแน่นประชากร">Nüfus yoğunluğu</span></label>
+      <label><input type="checkbox" value="noktalar"> <span data-th="จุดสำคัญ">Önemli noktalar</span></label>
+      <label><input type="checkbox" value="pins" checked> <span data-th="ประกาศ">İlanlar</span></label>
+    </div>
+    <div id="layernote" class="muted hint"></div>
+  </section>
+
+  <div class="mobonly mob-collapsible mob-apply-wrap">
+    <button type="button" id="mobapply" class="primary" data-th="✓ ดูรายการประกาศ">✓ Filtreleri kapat ve listeyi gör</button>
+  </div>
+
+  <section class="box" id="chat" hidden>
+    <div class="boxh"><span data-th="ที่ปรึกษาทำเล (AI)">Bölge danışmanı (yapay zekâ)</span> <button id="chatnew" class="mini" title="Konuşmayı sıfırla" data-th-title="เริ่มบทสนทนาใหม่" data-th="แชทใหม่">Yeni sohbet</button></div>
+    <div id="chatlog"></div>
+    <div class="row">
+      <textarea id="chatq" rows="2" placeholder="Ör. Asok'ta ana cadde hangisi, yaya trafiği nereden geçer?" data-th-ph="เช่น ถนนสายหลักใน Asok คือเส้นไหน คนเดินผ่านทางไหน?"></textarea>
+      <button id="chatsend" class="primary" data-th="ถาม">Sor</button>
+    </div>
+    <div class="muted hint" data-th="ใช้การสมัคร Claude ของคุณ ค้นหาบนเว็บ พื้นที่ที่วาดและประกาศที่เลือกจะแนบไปกับคำถาม ตอบภายใน 20–90 วินาที">Claude aboneliğinle çalışır, web'de arar. Çizili alan ve seçili ilan soruya eklenir. Yanıt 20–90 sn.</div>
+  </section>
+
+  <div id="summary" class="muted"></div>
+  <ol id="list"></ol>
+</aside>
+<main id="map"></main>
+
+<div id="scoremodal" class="score-modal-backdrop" hidden>
+  <div class="score-modal" role="dialog" aria-modal="true">
+    <div class="score-modal-head">
+      <div id="scoremodaltitle" class="score-modal-title"></div>
+      <button type="button" id="scoremodalclose" class="score-modal-close" title="Kapat (Esc)" data-th-title="ปิด (Esc)">✕</button>
+    </div>
+    <div id="scoremodalbody" class="score-modal-body"></div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="app.js?v=71"></script>
+</body>
+</html>
